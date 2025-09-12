@@ -1,72 +1,51 @@
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
-import os, json, datetime
+import os
 
 app = Flask(__name__)
 
-API_KEY = os.getenv("GOOGLE_API_KEY", None)
-if not API_KEY:
-    raise ValueError("⚠️ GOOGLE_API_KEY is not set.")
+# NOTE: For security reasons, it is highly recommended to use environment variables
+# instead of hardcoding API keys in a production application.
+API_KEY = "AIzaSyApGfglwT0LOAOBLN4CQOaDqmtgDlLKn-k"
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 chat = model.start_chat()
 
-LOG_FILE = "chat_log.txt"
-USER_DATA_FILE = "user_data.json"
-
-def load_user_data():
-    if os.path.exists(USER_DATA_FILE):
-        with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"profile": {}, "appointments": [], "emergency": []}
-
-def save_user_data(data):
-    with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
-
+# The home route serves the main HTML page.
 @app.route("/")
 def home():
+    """Serves the main HTML page for the chatbot interface."""
     return render_template("index.html")
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    """
+    Handles user messages and sends them to the HealthBot model.
+    Returns the bot's response as a JSON object.
+    """
     user_input = request.json.get("message")
+    
+    # Check for empty input to prevent unnecessary API calls
+    if not user_input or user_input.strip() == "":
+        return jsonify({"reply": "Please enter a message to chat."})
+
     try:
+        # Send the user's message to the chat model.
         response = chat.send_message(user_input)
-        bot_text = getattr(response, "text", "") or getattr(response, "last", "")
-
-        with open(LOG_FILE, "a", encoding="utf-8") as log:
-            log.write(f"[{datetime.datetime.now()}]\nYou: {user_input}\nHealthBot: {bot_text}\n\n")
-
-    except Exception:
-        bot_text = "Sorry, something went wrong."
+        
+        # Extract the text from the response.
+        # Use getattr to safely access attributes, providing a default value if not found.
+        bot_text = getattr(response, "text", "")
+        
+        # If no text is found, try to get the last message.
+        if not bot_text:
+            bot_text = getattr(response, "last", "")
+        
+    except Exception as e:
+        # Log the exception for debugging purposes.
+        print(f"An error occurred: {e}")
+        bot_text = "Sorry, something went wrong. Please try again later."
     
     return jsonify({"reply": bot_text})
 
-@app.route("/save_profile", methods=["POST"])
-def save_profile():
-    data = load_user_data()
-    data["profile"] = request.json
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Profile saved!"})
-
-@app.route("/save_appointment", methods=["POST"])
-def save_appointment():
-    data = load_user_data()
-    appointment = request.json
-    data["appointments"].append(appointment)
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Appointment added!"})
-
-@app.route("/save_emergency", methods=["POST"])
-def save_emergency():
-    data = load_user_data()
-    contacts = request.json.get("contacts")
-    data["emergency"] = contacts
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Emergency contacts saved!"})
-
-if __name__ == "__main__":
-    app.run(debug=True)
-    
