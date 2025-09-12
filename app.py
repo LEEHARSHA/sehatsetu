@@ -62,6 +62,11 @@ def save_appointment():
 @app.route("/save_emergency", methods=["POST"])
 def save_emergency():
     data = load_user_data()
+    contacts = request.json.get("contacts")
+    data["emergency"] = contacts
+    save_user_data(data)
+    return jsonify({"status": "success", "message": "Emergency contacts saved!"})
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
