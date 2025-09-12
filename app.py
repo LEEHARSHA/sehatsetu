@@ -4,15 +4,14 @@ import os
 
 app = Flask(__name__)
 
-# NOTE: For security reasons, it is highly recommended to use environment variables
-# instead of hardcoding API keys in a production application.
+# NOTE: For a production environment, it is highly recommended to use environment variables
+# instead of hardcoding API keys for security.
 API_KEY = "AIzaSyApGfglwT0LOAOBLN4CQOaDqmtgDlLKn-k"
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 chat = model.start_chat()
 
-# The home route serves the main HTML page.
 @app.route("/")
 def home():
     """Serves the main HTML page for the chatbot interface."""
@@ -35,7 +34,6 @@ def ask():
         response = chat.send_message(user_input)
         
         # Extract the text from the response.
-        # Use getattr to safely access attributes, providing a default value if not found.
         bot_text = getattr(response, "text", "")
         
         # If no text is found, try to get the last message.
@@ -43,9 +41,7 @@ def ask():
             bot_text = getattr(response, "last", "")
         
     except Exception as e:
-        # Log the exception for debugging purposes.
         print(f"An error occurred: {e}")
         bot_text = "Sorry, something went wrong. Please try again later."
     
     return jsonify({"reply": bot_text})
-
