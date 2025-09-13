@@ -1,0 +1,3 @@
+Flask==2.3.2
+google-generativeai
+colorama==0.4.6
