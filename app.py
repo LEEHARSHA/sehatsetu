@@ -9,6 +9,8 @@ import base64
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['SECRET_KEY'] = os.urandom(24)  # Generate a random secret key
 
 # ===================== File Paths =====================
 HISTORY_FILE = "chat_history.json"
@@ -98,6 +100,9 @@ def extract_text_from_pdf(file_path):
 
 def analyze_pdf_with_ai(text, filename):
     """Use Gemini AI to analyze PDF content"""
+    if not model:
+        return f"AI analysis is disabled. Please set your GOOGLE_API_KEY environment variable to enable AI-powered document analysis.\n\nDocument: {filename}\nText extracted successfully ({len(text)} characters)."
+    
     try:
         prompt = f"""
         Analyze this PDF document titled "{filename}" and provide:
@@ -123,12 +128,16 @@ def analyze_pdf_with_ai(text, filename):
 # ===================== AI Setup =====================
 API_KEY = os.getenv("GOOGLE_API_KEY")
 if not API_KEY:
-    raise ValueError("⚠️ GOOGLE_API_KEY is not set.")
-
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
-
-chat = model.start_chat(history=[])
+    print("⚠️ WARNING: GOOGLE_API_KEY is not set. AI features will be disabled.")
+    print("To enable AI features, set your Google API key:")
+    print("Windows PowerShell: $env:GOOGLE_API_KEY=\"your_api_key_here\"")
+    print("Windows Command Prompt: set GOOGLE_API_KEY=your_api_key_here")
+    model = None
+    chat = None
+else:
+    genai.configure(api_key=API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    chat = model.start_chat(history=[])
 
 # ===================== Routes =====================
 @app.route("/")
@@ -137,12 +146,38 @@ def home():
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    user_input = request.json.get("message", "")
-    if not user_input.strip():
-        return jsonify({"reply": "⚠️ Please enter a message."})
-
     try:
-        response = chat.send_message(user_input)
+        data = request.get_json()
+        if not data:
+            return jsonify({"reply": "⚠️ Invalid request data."}), 400
+            
+        user_input = data.get("message", "")
+        user_data = data.get("userData", {})
+        
+        if not user_input.strip():
+            return jsonify({"reply": "⚠️ Please enter a message."})
+
+        if not model or not chat:
+            return jsonify({"reply": "⚠️ AI features are disabled. Please set your GOOGLE_API_KEY environment variable to enable AI chat functionality."})
+
+        # Create context-aware prompt with user data
+        context_prompt = f"""
+        You are a helpful health assistant. Please provide general health information and wellness tips.
+        
+        User Profile Information:
+        - Name: {user_data.get('profile', {}).get('name', 'Not provided')}
+        - Age: {user_data.get('profile', {}).get('age', 'Not provided')}
+        - Gender: {user_data.get('profile', {}).get('gender', 'Not provided')}
+        - Blood Group: {user_data.get('profile', {}).get('blood_group', 'Not provided')}
+        - Health Conditions: {user_data.get('profile', {}).get('conditions', 'Not provided')}
+        - Medications: {', '.join([med.get('name', '') for med in user_data.get('medications', [])]) if user_data.get('medications') else 'None'}
+        
+        User Question: {user_input}
+        
+        Please provide helpful health information while reminding the user that this is not a substitute for professional medical advice.
+        """
+
+        response = chat.send_message(context_prompt)
         bot_text = getattr(response, "text", "") or getattr(response, "last", "")
 
         history = load_history()
@@ -163,6 +198,9 @@ def get_history():
 
 @app.route("/edit_message/<int:index>", methods=["PUT"])
 def edit_message(index):
+    if not model or not chat:
+        return jsonify({"status": "error", "message": "AI features are disabled. Please set your GOOGLE_API_KEY environment variable."}), 400
+
     history = load_history()
     if 0 <= index < len(history):
         new_message = request.json.get("message", "")
@@ -201,22 +239,34 @@ def get_user_data():
 
 @app.route("/save_profile", methods=["POST"])
 def save_profile():
-    data = load_user_data()
-    profile_data = request.json
-    profile_data['custom_fields'] = profile_data.get('custom_fields', [])
-    data["profile"] = profile_data
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Profile saved!", "data": profile_data})
+    try:
+        data = load_user_data()
+        profile_data = request.get_json()
+        if not profile_data:
+            return jsonify({"status": "error", "message": "Invalid request data"}), 400
+        
+        profile_data['custom_fields'] = profile_data.get('custom_fields', [])
+        data["profile"] = profile_data
+        save_user_data(data)
+        return jsonify({"status": "success", "message": "Profile saved!", "data": profile_data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error saving profile: {str(e)}"}), 500
 
 @app.route("/save_medication", methods=["POST"])
 def save_medication():
-    data = load_user_data()
-    medication = request.json
-    if "medications" not in data:
-        data["medications"] = []
-    data["medications"].append(medication)
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Medication added!"})
+    try:
+        data = load_user_data()
+        medication = request.get_json()
+        if not medication:
+            return jsonify({"status": "error", "message": "Invalid request data"}), 400
+        
+        if "medications" not in data:
+            data["medications"] = []
+        data["medications"].append(medication)
+        save_user_data(data)
+        return jsonify({"status": "success", "message": "Medication added!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error adding medication: {str(e)}"}), 500
 
 @app.route("/delete_medication/<int:index>", methods=["DELETE"])
 def delete_medication(index):
@@ -229,13 +279,19 @@ def delete_medication(index):
 
 @app.route("/save_emergency_contact", methods=["POST"])
 def save_emergency_contact():
-    data = load_user_data()
-    contact = request.json
-    if "emergency_contacts" not in data:
-        data["emergency_contacts"] = []
-    data["emergency_contacts"].append(contact)
-    save_user_data(data)
-    return jsonify({"status": "success", "message": "Emergency contact added!"})
+    try:
+        data = load_user_data()
+        contact = request.get_json()
+        if not contact:
+            return jsonify({"status": "error", "message": "Invalid request data"}), 400
+        
+        if "emergency_contacts" not in data:
+            data["emergency_contacts"] = []
+        data["emergency_contacts"].append(contact)
+        save_user_data(data)
+        return jsonify({"status": "success", "message": "Emergency contact added!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error adding emergency contact: {str(e)}"}), 500
 
 @app.route("/delete_emergency_contact/<int:index>", methods=["DELETE"])
 def delete_emergency_contact(index):
@@ -359,6 +415,9 @@ def delete_pdf(pdf_id):
 
 @app.route("/ask_pdf/<int:pdf_id>", methods=["POST"])
 def ask_pdf(pdf_id):
+    if not model:
+        return jsonify({"status": "error", "message": "AI features are disabled. Please set your GOOGLE_API_KEY environment variable to enable PDF Q&A functionality."}), 400
+
     pdf_data = load_pdf_data()
     if 0 > pdf_id or pdf_id >= len(pdf_data):
         return jsonify({"status": "error", "message": "PDF not found"}), 404
