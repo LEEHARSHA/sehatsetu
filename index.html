@@ -1703,48 +1703,43 @@ async init() {
         chatForm.dataset.bound = 'true';
     }
 
-    // --- Edit user messages (guard) ---
-    if (chatMessages && !chatMessages.dataset.editBound) {
-        chatMessages.addEventListener('click', (e) => {
-            if (e.target.classList.contains('edit-btn')) {
-                const messageDiv = e.target.closest('.message');
-                const messageText = messageDiv.querySelector('.message-text');
-                const oldText = messageText.innerText;
-                const editId = messageDiv.dataset.id;
+    // --- Edit user messages ---
+    chatMessages.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-btn')) {
+            const messageDiv = e.target.closest('.message');
+            const messageText = messageDiv.querySelector('.message-text');
+            const oldText = messageText.innerText;
+            const editId = messageDiv.dataset.id;
 
-                const newText = prompt('Edit your message:', oldText);
-                if (!newText) return;
+            const newText = prompt('Edit your message:', oldText);
+            if (!newText) return;
 
-                messageText.innerText = newText;
+            messageText.innerText = newText;
 
-                app.apiCall(`/ask`, "POST", { message: newText, edit_id: editId })
-                    .then(data => {
-                        let next = messageDiv.nextElementSibling;
-                        while (next) {
-                            const toRemove = next;
-                            next = next.nextElementSibling;
-                            toRemove.remove();
-                        }
-                        this.addMessage(data.reply, 'bot');
-                    })
-                    .catch(() => {
-                        app.showNotification("Edit failed. Please try again.", "error");
-                    });
-            }
-        });
-        chatMessages.dataset.editBound = 'true';
-    }
+            app.apiCall(`/ask`, "POST", { message: newText, edit_id: editId })
+                .then(data => {
+                    // Remove all messages after this one
+                    let next = messageDiv.nextElementSibling;
+                    while (next) {
+                        const toRemove = next;
+                        next = next.nextElementSibling;
+                        toRemove.remove();
+                    }
+                    // Add fresh bot reply
+                    this.addMessage(data.reply, 'bot');
+                })
+                .catch(() => {
+                    app.showNotification("Edit failed. Please try again.", "error");
+                });
+        }
+    });
 
 
     // --- Back to Chat page ---
-    const backBtn = document.getElementById("backToChatBtn");
-    if (backBtn && !backBtn.dataset.bound) {
-        backBtn.addEventListener("click", () => {
-            document.getElementById("chatHistoryPage").classList.add("hidden");
-            document.getElementById("chatContainer").classList.remove("hidden");
-        });
-        backBtn.dataset.bound = 'true';
-    }
+    document.getElementById("backToChatBtn").addEventListener("click", () => {
+        document.getElementById("chatHistoryPage").classList.add("hidden"); // hide history
+        document.getElementById("chatContainer").classList.remove("hidden"); // show main chat
+    });
     // --- Load chat history dynamically ---
 async function loadChatHistory() {
     const chatHistoryDiv = document.getElementById("chatHistory");
@@ -2468,6 +2463,12 @@ class AppointmentsPage {
                                 <label class="form-label">Doctor</label>
                                 <select class="form-input" id="apptDoctor">
                                     <option value="">Select a doctor</option>
+                                    <option>DR. DIBYA KUMAR BARUAH</option>
+                                    <option>DR. SUDHIR CHANDRA SINHA</option>
+                                    <option>DR. SUJATHA VIPPERLA</option>
+                                    <option>DR. DR. VENKATESWARLU</option>
+                                    <option>DR. DR. DEMUDU BABU BODDU</option>
+                                    <option>DR. DR. DEEPTHI VEMURI</option>
                                 </select>
                                 <div id="doctorHelp" class="text-sm text-gray-400 mt-1">Choose a specialty and location to load doctors.</div>
                             </div>
@@ -2507,22 +2508,6 @@ class AppointmentsPage {
             form.dataset.bound = "true";
         }
 
-        // Bind specialty/location change to fetch doctors
-        const specialtyEl = document.getElementById('apptSpecialty');
-        const locationEl = document.getElementById('apptLocation');
-        const doctorEl = document.getElementById('apptDoctor');
-        const debouncedFetch = this.debounce(async () => {
-            await this.loadDoctors();
-        }, 400);
-        if (!specialtyEl.dataset.bound) {
-            specialtyEl.addEventListener('change', debouncedFetch);
-            specialtyEl.dataset.bound = 'true';
-        }
-        if (!locationEl.dataset.bound) {
-            locationEl.addEventListener('input', debouncedFetch);
-            locationEl.dataset.bound = 'true';
-        }
-
         // ✅ Event delegation for edit/delete
         const container = document.getElementById('appointmentsList');
         if (!container.dataset.bound) {
@@ -2560,8 +2545,6 @@ class AppointmentsPage {
                 <div class="data-item-content">
                     <div class="data-item-title">${appt.title}</div>
                     <div class="data-item-subtitle">Date: ${appt.date} | Time: ${appt.time}</div>
-                    ${appt.specialty ? `<div class="data-item-subtitle">Specialty: ${appt.specialty}</div>` : ''}
-                    ${appt.doctor ? `<div class="data-item-subtitle">Doctor: ${appt.doctor.name} (${appt.doctor.hospital}, ${appt.doctor.location})</div>` : ''}
                 </div>
                 <div class="data-item-actions">
                     <button class="btn btn-outline btn-sm edit-btn">
@@ -2580,15 +2563,7 @@ class AppointmentsPage {
         const appointmentData = {
             title: document.getElementById('apptTitle').value,
             date: document.getElementById('apptDate').value,
-            time: document.getElementById('apptTime').value,
-            specialty: document.getElementById('apptSpecialty').value || undefined,
-            location: document.getElementById('apptLocation').value || undefined,
-            doctor: (() => {
-                const sel = document.getElementById('apptDoctor');
-                const value = sel.value;
-                if (!value) return undefined;
-                try { return JSON.parse(value); } catch { return undefined; }
-            })()
+            time: document.getElementById('apptTime').value
         };
 
         if (!appointmentData.title || !appointmentData.date || !appointmentData.time) {
@@ -2616,15 +2591,7 @@ class AppointmentsPage {
             const updatedData = {
                 title: document.getElementById('apptTitle').value,
                 date: document.getElementById('apptDate').value,
-                time: document.getElementById('apptTime').value,
-                specialty: document.getElementById('apptSpecialty').value || undefined,
-                location: document.getElementById('apptLocation').value || undefined,
-                doctor: (() => {
-                    const sel = document.getElementById('apptDoctor');
-                    const value = sel.value;
-                    if (!value) return undefined;
-                    try { return JSON.parse(value); } catch { return undefined; }
-                })()
+                time: document.getElementById('apptTime').value
             };
             await app.updateAppointment(index, updatedData);
             form.reset();
@@ -2646,48 +2613,6 @@ class AppointmentsPage {
         );
     }
 }
-
-// Utilities for AppointmentsPage
-AppointmentsPage.prototype.debounce = function (fn, wait) {
-    let t;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn.apply(this, args), wait);
-    };
-};
-
-AppointmentsPage.prototype.loadDoctors = async function () {
-    const specialty = document.getElementById('apptSpecialty').value;
-    const location = document.getElementById('apptLocation').value;
-    const select = document.getElementById('apptDoctor');
-    const help = document.getElementById('doctorHelp');
-    select.innerHTML = '<option value="">Loading...</option>';
-    try {
-        const params = new URLSearchParams();
-        if (specialty) params.set('specialty', specialty);
-        if (location) params.set('location', location);
-        const res = await fetch(`${BASE_URL}/find_doctors?${params.toString()}`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        const doctors = (data && data.doctors) || [];
-        if (doctors.length === 0) {
-            select.innerHTML = '<option value="">No doctors found</option>';
-            help.textContent = 'Try a different specialty or location.';
-            return;
-        }
-        select.innerHTML = '<option value="">Select a doctor</option>';
-        doctors.forEach(doc => {
-            const opt = document.createElement('option');
-            opt.value = JSON.stringify(doc);
-            opt.textContent = `${doc.name} — ${doc.hospital} (${doc.location})`;
-            select.appendChild(opt);
-        });
-        help.textContent = `${doctors.length} doctors found.`;
-    } catch (e) {
-        select.innerHTML = '<option value="">Failed to load</option>';
-        help.textContent = 'Network error while loading doctors.';
-    }
-};
 // --- Wellness Page ---
 class WellnessPage {
     render() {
