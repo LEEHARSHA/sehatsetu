@@ -2636,36 +2636,35 @@ class AppointmentsPage {
         }
     });
 
-    // On specialty change → filter doctors
+    // On specialty change → filter doctors (or show all when none selected)
     specialtySelect.addEventListener('change', () => {
-        // Keep static defaults, then add filtered
-        const staticDefaults = [
-            { id: 1, name: 'Dr. Asha Varma', hospital: 'Sunshine Hospitals', location: 'Hyderabad' },
-            { id: 2, name: 'Dr. Rohan Iyer', hospital: 'Yashoda Hospitals', location: 'Hyderabad' },
-            { id: 3, name: 'Dr. Kavya Rao', hospital: 'KIMS', location: 'Secunderabad' },
-            { id: 4, name: 'Dr. Manoj Menon', hospital: 'Apollo Hospitals', location: 'Bengaluru' },
-            { id: 5, name: 'Dr. Neha Shah', hospital: 'Fortis', location: 'Mumbai' },
-            { id: 6, name: 'Dr. Vikram Patel', hospital: 'Lilavati', location: 'Mumbai' },
-            { id: 7, name: 'Dr. Ananya Gupta', hospital: 'AIIMS', location: 'Delhi' },
-            { id: 8, name: 'Dr. Suresh Reddy', hospital: 'Care Hospitals', location: 'Hyderabad' },
-        ];
-        doctorSelect.innerHTML = `<option value="">Select Doctor</option>` +
-            staticDefaults.map(d => `<option value="${d.id}">${d.name} (${d.hospital}, ${d.location})</option>`).join('');
+        doctorSelect.innerHTML = `<option value="">Select Doctor</option>`;
         timeSelect.innerHTML = `<option value="">Select Time</option>`;
-        doctorSelect.disabled = true;
         timeSelect.disabled = true;
 
-        if (specialtySelect.value) {
-            const filtered = doctors.filter(d => d.specialty === specialtySelect.value);
-            filtered.forEach(doc => {
-                const opt = document.createElement('option');
-                opt.value = doc.id;
-                opt.textContent = `${doc.name} (${doc.hospital}, ${doc.location})`;
-                doctorSelect.appendChild(opt);
-            });
-            doctorSelect.disabled = false;
-        }
+        const source = specialtySelect.value ? doctors.filter(d => d.specialty === specialtySelect.value) : doctors;
+        source.forEach(doc => {
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.textContent = `${doc.name} (${doc.hospital}, ${doc.location})`;
+            doctorSelect.appendChild(opt);
+        });
+        doctorSelect.disabled = false;
+        doctorSelect.removeAttribute('disabled');
     });
+
+    // Initial doctor list (show all) and enable by default
+    (function initDoctors() {
+        doctorSelect.innerHTML = `<option value="">Select Doctor</option>`;
+        doctors.forEach(doc => {
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.textContent = `${doc.name} (${doc.hospital}, ${doc.location})`;
+            doctorSelect.appendChild(opt);
+        });
+        doctorSelect.disabled = false;
+        doctorSelect.removeAttribute('disabled');
+    })();
 
     // On doctor change → show times
     doctorSelect.addEventListener('change', () => {
