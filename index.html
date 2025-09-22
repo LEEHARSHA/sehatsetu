@@ -2689,15 +2689,29 @@ class AppointmentsPage {
         const appointmentData = {
             specialty: specialtySelect.value,
             doctor_id: doctorSelect.value,
-            doctor_name: doctors.find(d => d.id == doctorSelect.value).name,
+            doctor_name: doctors.find(d => d.id == doctorSelect.value)?.name || 'Selected Doctor',
             time: timeSelect.value,
         };
 
-        await app.saveAppointment(appointmentData);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+            await app.saveAppointment(appointmentData);
+            app.showNotification('Appointment booked successfully!', 'success');
+        } catch (err) {
+            // Offline fallback: keep local state consistent
+            app.data.appointments.push(appointmentData);
+            app.showNotification('Saved locally (network issue).', 'warning');
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
         renderAppointments();
         form.reset();
-        doctorSelect.disabled = true;
+        doctorSelect.disabled = false;
+        doctorSelect.removeAttribute('disabled');
         timeSelect.disabled = true;
+        timeSelect.innerHTML = `<option value="">Select Time</option>`;
     });
 
     // Helper: render booked appointments
@@ -2725,8 +2739,14 @@ function renderAppointments() {
 
     list.querySelectorAll('.btn-danger').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const index = e.target.dataset.index;
-            await app.deleteAppointment(index);
+            const index = parseInt(e.currentTarget.dataset.index);
+            if (Number.isNaN(index)) return;
+            try {
+                await app.deleteAppointment(index);
+            } catch (_) {
+                // Local fallback
+                app.data.appointments.splice(index, 1);
+            }
             renderAppointments();
         });
     });
