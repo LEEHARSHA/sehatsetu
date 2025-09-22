@@ -2531,6 +2531,11 @@ class AppointmentsPage {
         <label class="form-label">Specialty</label>
         <select id="specialtySelect" class="form-input">
             <option value="">Select Specialty</option>
+            <option value="Cardiology">Cardiology</option>
+            <option value="Neurology">Neurology</option>
+            <option value="Orthopedics">Orthopedics</option>
+            <option value="Dermatology">Dermatology</option>
+            <option value="Pediatrics">Pediatrics</option>
         </select>
     </div>
 
@@ -2539,6 +2544,14 @@ class AppointmentsPage {
         <label class="form-label">Doctor</label>
         <select id="doctorSelect" class="form-input" disabled>
             <option value="">Select Doctor</option>
+            <option value="1">Dr. Asha Varma (Sunshine Hospitals, Hyderabad)</option>
+            <option value="2">Dr. Rohan Iyer (Yashoda Hospitals, Hyderabad)</option>
+            <option value="3">Dr. Kavya Rao (KIMS, Secunderabad)</option>
+            <option value="4">Dr. Manoj Menon (Apollo Hospitals, Bengaluru)</option>
+            <option value="5">Dr. Neha Shah (Fortis, Mumbai)</option>
+            <option value="6">Dr. Vikram Patel (Lilavati, Mumbai)</option>
+            <option value="7">Dr. Ananya Gupta (AIIMS, Delhi)</option>
+            <option value="8">Dr. Suresh Reddy (Care Hospitals, Hyderabad)</option>
         </select>
     </div>
 
@@ -2547,6 +2560,15 @@ class AppointmentsPage {
         <label class="form-label">Available Time</label>
         <select id="timeSelect" class="form-input" disabled>
             <option value="">Select Time</option>
+            <option value="08:00 AM">08:00 AM</option>
+            <option value="09:00 AM">09:00 AM</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="01:00 PM">01:00 PM</option>
+            <option value="02:00 PM">02:00 PM</option>
+            <option value="03:00 PM">03:00 PM</option>
+            <option value="04:00 PM">04:00 PM</option>
+            <option value="05:00 PM">05:00 PM</option>
         </select>
     </div>
 
@@ -2588,22 +2610,47 @@ class AppointmentsPage {
     try {
         doctors = await app.apiCall('/get_doctors');
     } catch (err) {
-        app.showNotification('Failed to load doctors', 'error');
-        return;
+        // fallback to static doctor list when backend is unavailable
+        doctors = [
+            { id: 1, name: 'Dr. Asha Varma', specialty: 'Cardiology', location: 'Hyderabad', hospital: 'Sunshine Hospitals', times: ['09:00 AM','11:00 AM','02:00 PM'] },
+            { id: 2, name: 'Dr. Rohan Iyer', specialty: 'Neurology', location: 'Hyderabad', hospital: 'Yashoda Hospitals', times: ['10:00 AM','01:00 PM','04:00 PM'] },
+            { id: 3, name: 'Dr. Kavya Rao', specialty: 'Orthopedics', location: 'Secunderabad', hospital: 'KIMS', times: ['08:30 AM','12:30 PM'] },
+            { id: 4, name: 'Dr. Manoj Menon', specialty: 'Dermatology', location: 'Bengaluru', hospital: 'Apollo Hospitals', times: ['09:15 AM','03:15 PM'] },
+            { id: 5, name: 'Dr. Neha Shah', specialty: 'Pediatrics', location: 'Mumbai', hospital: 'Fortis', times: ['11:00 AM','05:00 PM'] },
+            { id: 6, name: 'Dr. Vikram Patel', specialty: 'Cardiology', location: 'Mumbai', hospital: 'Lilavati', times: ['09:45 AM','01:45 PM'] },
+            { id: 7, name: 'Dr. Ananya Gupta', specialty: 'Neurology', location: 'Delhi', hospital: 'AIIMS', times: ['10:30 AM','02:30 PM'] },
+            { id: 8, name: 'Dr. Suresh Reddy', specialty: 'Orthopedics', location: 'Hyderabad', hospital: 'Care Hospitals', times: ['08:00 AM','01:00 PM'] },
+        ];
+        app.showNotification('Loaded default doctor list (offline mode)', 'warning');
     }
 
     // Populate specialties
     const specialties = [...new Set(doctors.map(d => d.specialty))];
+    const existing = new Set(Array.from(specialtySelect.options).map(o => o.value));
     specialties.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
-        specialtySelect.appendChild(opt);
+        if (!existing.has(s)) {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            specialtySelect.appendChild(opt);
+        }
     });
 
     // On specialty change → filter doctors
     specialtySelect.addEventListener('change', () => {
-        doctorSelect.innerHTML = `<option value="">Select Doctor</option>`;
+        // Keep static defaults, then add filtered
+        const staticDefaults = [
+            { id: 1, name: 'Dr. Asha Varma', hospital: 'Sunshine Hospitals', location: 'Hyderabad' },
+            { id: 2, name: 'Dr. Rohan Iyer', hospital: 'Yashoda Hospitals', location: 'Hyderabad' },
+            { id: 3, name: 'Dr. Kavya Rao', hospital: 'KIMS', location: 'Secunderabad' },
+            { id: 4, name: 'Dr. Manoj Menon', hospital: 'Apollo Hospitals', location: 'Bengaluru' },
+            { id: 5, name: 'Dr. Neha Shah', hospital: 'Fortis', location: 'Mumbai' },
+            { id: 6, name: 'Dr. Vikram Patel', hospital: 'Lilavati', location: 'Mumbai' },
+            { id: 7, name: 'Dr. Ananya Gupta', hospital: 'AIIMS', location: 'Delhi' },
+            { id: 8, name: 'Dr. Suresh Reddy', hospital: 'Care Hospitals', location: 'Hyderabad' },
+        ];
+        doctorSelect.innerHTML = `<option value="">Select Doctor</option>` +
+            staticDefaults.map(d => `<option value="${d.id}">${d.name} (${d.hospital}, ${d.location})</option>`).join('');
         timeSelect.innerHTML = `<option value="">Select Time</option>`;
         doctorSelect.disabled = true;
         timeSelect.disabled = true;
@@ -2626,15 +2673,15 @@ class AppointmentsPage {
         timeSelect.disabled = true;
 
         const selected = doctors.find(d => d.id == doctorSelect.value);
-        if (selected && selected.times.length) {
-            selected.times.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t;
-                opt.textContent = t;
-                timeSelect.appendChild(opt);
-            });
-            timeSelect.disabled = false;
-        }
+        const defaults = ['08:00 AM','09:00 AM','10:00 AM','11:00 AM','01:00 PM','02:00 PM','03:00 PM','04:00 PM','05:00 PM'];
+        const times = selected && selected.times && selected.times.length ? selected.times : defaults;
+        times.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            timeSelect.appendChild(opt);
+        });
+        timeSelect.disabled = false;
     });
 
     // On form submit → save appointment
