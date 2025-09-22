@@ -2698,6 +2698,7 @@ class AppointmentsPage {
         try {
             await app.saveAppointment(appointmentData);
             app.showNotification('Appointment booked successfully!', 'success');
+            try { await app.loadData(); } catch (_) {}
         } catch (err) {
             // Offline fallback: keep local state consistent
             app.data.appointments.push(appointmentData);
