@@ -94,9 +94,7 @@ if not os.path.exists(LOG_FILE):
 
 USER_DATA_FILE = "user_data.json"
 
-# ---------------------------
-# Helpers
-# ---------------------------
+
 def update_log(edit_id: str, user_input: str, bot_text: str):
     """Update or append chat log entries."""
     if os.path.exists(LOG_FILE):
