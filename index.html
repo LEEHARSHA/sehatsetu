@@ -2576,7 +2576,6 @@ class AppointmentsPage {
         <button type="submit" class="btn btn-primary">Book Appointment</button>
     </div>
 </form>
-<div class="mt-6" id="appointmentsList"></div>
                 </div>
 
                 <div class="card">
@@ -2731,7 +2730,11 @@ function renderAppointments() {
             renderAppointments();
         });
     });
-}}
+}
+
+    // Initial render existing appointments
+    renderAppointments();
+}
 }
 // --- Wellness Page ---
 class WellnessPage {
