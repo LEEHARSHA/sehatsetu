@@ -1076,6 +1076,10 @@
                 <i class="fas fa-heartbeat"></i>
                 <span>Wellness Tips</span>
             </a></li>
+            <li><a href="#" class="sidebar-item" data-page="wellspring">
+                <i class="fas fa-globe"></i>
+                <span>Wellspring</span>
+            </a></li>
         </ul>
         
         <div class="wellness-tips">
@@ -1385,7 +1389,8 @@
                     medications: new MedicationsPage(),
                     emergency: new EmergencyPage(),
                     appointments: new AppointmentsPage(),
-                    wellness: new WellnessPage()
+                    wellness: new WellnessPage(),
+                    wellspring: new WellspringPage()
                 };
             }
 
@@ -1403,7 +1408,8 @@
                     medications: 'Medication Tracker',
                     emergency: 'Emergency Contacts',
                     appointments: 'Appointments',
-                    wellness: 'Wellness Tips'
+                    wellness: 'Wellness Tips',
+                    wellspring: 'Wellspring'
                 };
                 document.getElementById('pageTitle').textContent = titles[pageId] || 'Sehat Sethu';
 
@@ -1455,6 +1461,11 @@ const BASE_URL = "https://sehat-sethu-2.onrender.com"; // replace with your real
 <div class="flex justify-between items-center mb-2 px-2 gap-2">
   <h2 class="text-lg font-semibold">Chat</h2>
   <div class="flex gap-2">
+    <button id="openWellspringBtn"
+            class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow transition"
+            title="Open Wellspring view">
+        🌐 Wellspring
+    </button>
     <button id="historyBtn" 
             class="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-green-600 text-white text-sm font-medium rounded-lg shadow transition">
         📜 Chat History
@@ -1813,6 +1824,91 @@ document.getElementById("clearHistoryBtn").addEventListener("click", async () =>
                 chatMessages.appendChild(thinkingDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 return thinkingDiv;
+            }
+        }
+
+        // --- Wellspring Page ---
+        class WellspringPage {
+            render() {
+                return `
+                    <div class="card" style="height: calc(100vh - 200px); padding: 0; overflow: hidden;">
+                        <div class="card-header" style="padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+                            <div class="flex items-center gap-2">
+                                <h2 class="card-title">Wellspring</h2>
+                                <div class="card-icon"><i class="fas fa-globe"></i></div>
+                            </div>
+                            <a href="https://sehatsehtu-wellspring.lovable.app" target="_blank" rel="noopener noreferrer"
+                               class="btn btn-primary btn-sm" title="Open Wellspring in a new tab">Open in new tab</a>
+                        </div>
+                        <div style="height: calc(100% - 72px); position: relative;">
+                            <div id="wellspringSpinner" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0.75rem; z-index: 10; background: rgba(0,0,0,0.05);">
+                                <span class="loading-spinner"></span>
+                                <span style="color: var(--text-secondary);">Loading Wellspring...</span>
+                            </div>
+                            <div id="wellspringError" style="position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 10; background: rgba(0,0,0,0.05);">
+                                <div class="card" style="padding: 1rem; max-width: 420px; text-align: center;">
+                                    <h3 class="card-title" style="margin: 0 0 0.5rem 0;">Unable to load Wellspring</h3>
+                                    <p style="margin: 0 0 1rem 0; color: var(--text-secondary);">It’s taking longer than expected. You can retry or open in a new tab.</p>
+                                    <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                                        <button id="retryWellspringBtn" class="btn btn-primary btn-sm">Retry</button>
+                                        <a href="https://sehatsehtu-wellspring.lovable.app" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">Open in new tab</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <iframe id="wellspringFrame" src="https://sehatsehtu-wellspring.lovable.app" title="Wellspring"
+                                    style="border: 0; width: 100%; height: 100%; background: var(--bg-secondary);"></iframe>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async init() {
+                const frame = document.getElementById('wellspringFrame');
+                const spinner = document.getElementById('wellspringSpinner');
+                const errorBox = document.getElementById('wellspringError');
+                const retryBtn = document.getElementById('retryWellspringBtn');
+
+                let timeoutId;
+                const showSpinner = () => { if (spinner) spinner.style.display = 'flex'; };
+                const hideSpinner = () => { if (spinner) spinner.style.display = 'none'; };
+                const showError = () => { if (errorBox) errorBox.style.display = 'flex'; };
+                const hideError = () => { if (errorBox) errorBox.style.display = 'none'; };
+
+                const onLoaded = () => {
+                    hideSpinner();
+                    hideError();
+                    if (timeoutId) clearTimeout(timeoutId);
+                };
+
+                const startLoad = () => {
+                    showSpinner();
+                    hideError();
+                    if (timeoutId) clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        hideSpinner();
+                        showError();
+                    }, 12000);
+                };
+
+                if (frame) {
+                    frame.addEventListener('load', onLoaded);
+                    startLoad();
+                }
+
+                if (retryBtn && frame) {
+                    retryBtn.addEventListener('click', () => {
+                        startLoad();
+                        try {
+                            // Force reload by resetting src
+                            const current = frame.src;
+                            frame.src = '';
+                            setTimeout(() => { frame.src = current; }, 0);
+                        } catch (_) {
+                            // Fallback: direct set
+                            frame.src = 'https://sehatsehtu-wellspring.lovable.app';
+                        }
+                    });
+                }
             }
         }
 
@@ -2722,6 +2818,15 @@ class WellnessPage {
             toggleButton.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
         });
+
+            // Wellspring header button
+            const openWellspringBtn = document.getElementById('openWellspringBtn');
+            if (openWellspringBtn && !openWellspringBtn.dataset.bound) {
+                openWellspringBtn.addEventListener('click', async () => {
+                    await pageManager.loadPage('wellspring');
+                });
+                openWellspringBtn.dataset.bound = 'true';
+            }
 
         });
 
