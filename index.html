@@ -67,6 +67,38 @@
             overflow-x: hidden;
         }
 
+        /* --- Page Transitions --- */
+        .page-transition {
+            animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- Card Animations --- */
+        .card {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
         /* --- Advanced Sidebar --- */
         /* Sidebar default */
 .sidebar {
@@ -386,11 +418,12 @@
             border-radius: 1rem;
             padding: 1.5rem;
             box-shadow: var(--shadow-sm);
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .card:hover {
             box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
         .card-header {
@@ -469,8 +502,25 @@
             font-weight: 500;
             font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
@@ -480,7 +530,7 @@
 
         .btn-primary:hover {
             background-color: #2563eb;
-            transform: translateY(-1px);
+            transform: translateY(-2px) scale(1.02);
             box-shadow: var(--shadow-md);
         }
 
@@ -491,7 +541,7 @@
 
         .btn-secondary:hover {
             background-color: #059669;
-            transform: translateY(-1px);
+            transform: translateY(-2px) scale(1.02);
             box-shadow: var(--shadow-md);
         }
 
@@ -502,7 +552,7 @@
 
         .btn-danger:hover {
             background-color: #dc2626;
-            transform: translateY(-1px);
+            transform: translateY(-2px) scale(1.02);
             box-shadow: var(--shadow-md);
         }
 
@@ -515,6 +565,7 @@
         .btn-outline:hover {
             background-color: var(--bg-tertiary);
             border-color: var(--accent-primary);
+            transform: translateY(-1px);
         }
 
         .btn-sm {
@@ -665,7 +716,7 @@
         }
 
         .chat-send-btn:hover {
-            transform: scale(1.05);
+            transform: scale(1.1);
             box-shadow: var(--shadow-md);
         }
 
@@ -868,12 +919,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .data-item:hover {
             box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
+            transform: translateY(-3px);
         }
 
         .data-item-content {
@@ -963,7 +1014,7 @@
             }
         }
 
-        /* --- Animations --- */
+        /* --- Enhanced Animations --- */
         .fade-in {
             animation: fadeIn 0.3s ease;
         }
@@ -980,6 +1031,57 @@
         @keyframes slideInRight {
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
+        }
+
+        /* --- Message Animations --- */
+        .message {
+            animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* --- Form Animations --- */
+        .form-input:focus {
+            transform: scale(1.02);
+        }
+
+        /* --- Loading Pulse --- */
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+
+        /* --- Stagger Animation --- */
+        .stagger-item {
+            animation: staggerIn 0.5s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .stagger-item:nth-child(1) { animation-delay: 0.1s; }
+        .stagger-item:nth-child(2) { animation-delay: 0.2s; }
+        .stagger-item:nth-child(3) { animation-delay: 0.3s; }
+        .stagger-item:nth-child(4) { animation-delay: 0.4s; }
+        .stagger-item:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes staggerIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* --- Utility Classes --- */
@@ -1416,6 +1518,7 @@
                 // Load page content
                 const contentBody = document.getElementById('contentBody');
                 contentBody.innerHTML = this.pages[pageId].render();
+                contentBody.classList.add('page-transition');
                 
                 // Initialize page
                 await this.pages[pageId].init();
@@ -1424,8 +1527,14 @@
             }
         }
 
-// Base URL for API calls (same-origin by default)
-const BASE_URL = "";
+// Base URL for API calls: auto-detect origin, fallback to localhost when opened as file
+const BASE_URL = (() => {
+    try {
+        const origin = window.location.origin;
+        if (origin && origin.startsWith('http')) return origin;
+    } catch (_) {}
+    return 'http://127.0.0.1:5000';
+})();
 
         // --- Chat Page ---
         class ChatPage {
@@ -2199,7 +2308,7 @@ class MedicationsPage {
 
         app.data.medications.forEach((med, index) => {
             const medDiv = document.createElement('div');
-            medDiv.className = 'data-item';
+            medDiv.className = 'data-item stagger-item';
             medDiv.dataset.index = index; // ✅ needed for delegation
 
             medDiv.innerHTML = `
@@ -2377,7 +2486,7 @@ class EmergencyPage {
 
         app.data.emergency_contacts.forEach((contact, index) => {
             const contactDiv = document.createElement('div');
-            contactDiv.className = 'data-item';
+            contactDiv.className = 'data-item stagger-item';
             contactDiv.dataset.index = index; // ✅ needed for delegation
             
             let customFieldsHtml = '';
@@ -2449,7 +2558,13 @@ class EmergencyPage {
             }
         });
 
-        await app.saveEmergencyContact(contactData);
+        try {
+            await app.saveEmergencyContact(contactData);
+            await app.loadData();
+            app.showNotification('Emergency contact added successfully!', 'success');
+        } catch (e) {
+            app.showNotification('Failed to add contact (saved locally).', 'warning');
+        }
         document.getElementById('emergencyForm').reset();
         document.getElementById('emergencyCustomFields').innerHTML = '';
         this.renderContacts();
@@ -2491,7 +2606,13 @@ class EmergencyPage {
                 }
             });
 
-            await app.updateEmergencyContact(index, updatedData);
+            try {
+                await app.updateEmergencyContact(index, updatedData);
+                await app.loadData();
+                app.showNotification('Emergency contact updated.', 'success');
+            } catch (e) {
+                app.showNotification('Update failed (state updated locally).', 'warning');
+            }
             form.reset();
             customFieldsContainer.innerHTML = '';
             submitBtn.textContent = 'Add Contact';
@@ -2505,7 +2626,18 @@ class EmergencyPage {
             'Are you sure you want to delete this emergency contact?',
             async (confirmed) => {
                 if (confirmed) {
-                    await app.deleteEmergencyContact(index);
+                    try {
+                        await app.deleteEmergencyContact(index);
+                        await app.loadData();
+                        app.showNotification('Emergency contact deleted.', 'success');
+                    } catch (e) {
+                        // Local fallback
+                        const data = app.data;
+                        if (data && Array.isArray(data.emergency_contacts)) {
+                            data.emergency_contacts.splice(index, 1);
+                        }
+                        app.showNotification('Delete failed (removed locally).', 'warning');
+                    }
                     this.renderContacts();
                 }
             }
@@ -2725,7 +2857,7 @@ function renderAppointments() {
 
     app.data.appointments.forEach((a, i) => {
         const item = document.createElement('div');
-        item.className = "data-item";
+        item.className = "data-item stagger-item";
         item.innerHTML = `
             <div class="data-item-content">
                 <h4 class="data-item-title">${a.doctor_name} (${a.specialty})</h4>
@@ -2865,135 +2997,3 @@ class WellnessPage {
             await pageManager.loadPage('chat');
             
             // Load wellness tip in sidebar
-            try {
-                const tip = await app.getWeatherTip();
-                document.getElementById('wellnessTipText').textContent = tip;
-            } catch (error) {
-                document.getElementById('wellnessTipText').textContent = 
-                    "Remember to stay hydrated and maintain a balanced diet for optimal health!";
-            }
-
-            // Set initial theme
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            app.setTheme(savedTheme === 'dark');
-            document.getElementById('themeToggle').checked = savedTheme === 'dark';
-
-            const sidebar = document.getElementById('sidebar');
-            const toggleButton = document.getElementById('sidebarToggle');
-
-            toggleButton.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-        });
-
-            // Wellspring header button
-            const openWellspringBtn = document.getElementById('openWellspringBtn');
-            if (openWellspringBtn && !openWellspringBtn.dataset.bound) {
-                openWellspringBtn.addEventListener('click', async () => {
-                    await pageManager.loadPage('wellspring');
-                });
-                openWellspringBtn.dataset.bound = 'true';
-            }
-
-        });
-
-        async function loadSidebarTip() {
-            try {
-            const response = await fetch("/get_weather_tip");
-            const data = await response.json();
-            document.getElementById("wellnessTipText").textContent = data.tip;
-            } catch (err) {
-                console.error("Failed to load tip:", err);
-                document.getElementById("wellnessTipText").textContent = "Could not load tip.";
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", async () => {
-        // Create app state
-        window.app = new AppState();
-
-        // Create page manager
-        window.pageManager = new PageManager();
-
-        // Load the default page (chat)
-        await pageManager.loadPage("chat");
-
-        // Sidebar navigation
-        document.querySelectorAll(".sidebar-item").forEach(item => {
-        item.addEventListener("click", async (e) => {
-            e.preventDefault();
-            const pageId = item.getAttribute("data-page");
-            await pageManager.loadPage(pageId);
-        });
-        });
-
-    // Sidebar toggle
-    document.getElementById("sidebarToggle").addEventListener("click", () => {
-        document.getElementById("sidebar").classList.toggle("collapsed");
-        document.querySelector(".main-content").classList.toggle("collapsed");
-    });
-
-    // Theme toggle
-    const themeToggle = document.getElementById("themeToggle");
-    themeToggle.addEventListener("change", (e) => {
-        app.setTheme(e.target.checked);
-    });
-
-    // Apply saved theme
-    const savedTheme = localStorage.getItem("theme");
-    app.setTheme(savedTheme === "dark");
-    themeToggle.checked = savedTheme === "dark";
-
-    // Load daily wellness tip
-    const tip = await app.getWeatherTip();
-    document.getElementById("wellnessTipText").textContent = tip;
-});
-    </script>
-    <script>
-document.addEventListener("DOMContentLoaded", function () {
-  function bindOnceByCloning(id, handler) {
-    const el = document.getElementById(id);
-    if (!el) return null;
-    const clone = el.cloneNode(true);
-    el.parentNode.replaceChild(clone, el);
-    clone.addEventListener("click", handler);
-    return clone;
-  }
-
-  const chatMessages = document.getElementById("chatMessages");
-
-  // Use "historyBtn" instead of "chatHistoryBtn" to match your HTML
-  bindOnceByCloning("historyBtn", async () => {
-    try {
-      const data = await app.apiCall("/get_chat_history", "GET");
-      if (data.status === "success") {
-        if (chatMessages) chatMessages.innerHTML = "";
-        data.history.forEach(item => {
-          if (item.user) app.addMessage(item.user, "user");
-          if (item.bot) app.addMessage(item.bot, "bot");
-        });
-      }
-    } catch (e) { console.error(e); }
-  });
-
-  bindOnceByCloning("clearChatBtn", async (ev) => {
-    const btn = ev.currentTarget;
-    if (btn.disabled) return;
-    btn.disabled = true;
-    try {
-      const ok = confirm("Start a new chat? All previous messages will be cleared.");
-      if (!ok) return;
-      const data = await app.apiCall("/clear_chat", "POST");
-      if (data.status === "success") {
-        if (chatMessages) chatMessages.innerHTML = "";
-        const history = await app.apiCall("/get_chat_history", "GET");
-        if (history.status === "success") {
-          history.history.forEach(item => { if (item.bot) app.addMessage(item.bot, "bot"); });
-        }
-      }
-    } catch (e) { console.error(e); }
-    finally { btn.disabled = false; }
-  });
-});
-</script>
-</body>
-</html>
